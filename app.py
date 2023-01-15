@@ -133,8 +133,12 @@ def get_department_info(tx, id):
 
 
 def get_departments(tx):
+    args = request.args.to_dict()
     query = f"""MATCH (d:Department)
-                RETURN d"""
+                RETURN d
+                """
+    if 'sort' in args.keys() and args['sort'] == 'name':
+        query += "ORDER BY d.name"
     results = tx.run(query).data()
     departments = [{'name': result['d']['name']} for result in results]
     return departments
