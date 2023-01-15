@@ -122,8 +122,40 @@ def get_subordinates(tx, id):
 def get_department_info(tx, id):
     query = f"""MATCH (e:Employee) -[r]-> (d:Department) <-[:MANAGES]- (m:Employee)
                 WHERE id(e)={id}
+                WITH d, m
                 MATCH (es:Employee) -[r]-> (d)
+                RETURN d, m, count(es) AS ces;
                 """
+    result = tx.run(query).data()[0]
+    department = {'name': result['d']['name'],
+                  'manager': result['m']['name'], 'employees': result['ces']}
+    return department
+
+
+def get_departments(tx):
+    query = f"""MATCH (d:Department)
+                RETURN d"""
+    results = tx.run(query).data()
+    departments = [{'name': result['d']['name']} for result in results]
+    return departments
+
+
+def get_department_employees(tx, id):
+    query = f"""MATCH (d:Department) 
+                WHERE id(d) = {id} 
+                RETURN d"""
+    result = tx.run(query).data()
+
+    if not result:
+        return None
+    else:
+        query = f"""MATCH (d:Department) <-[r:WORKS_IN]- (e:Employee) 
+                    WHERE id(d) = {id}
+                    RETURN e"""
+        results = tx.run(query).data()
+        employees = [{'name': result['e']['name'],
+                      'position': result['e']['position']} for result in results]
+        return employees
 
 
 @app.route('/employees', methods=['GET', 'POST'])
@@ -175,8 +207,28 @@ def get_subordinates_route(id):
 def get_department_info_route(id):
     with driver.session() as session:
         department = session.execute_read(get_department_info, id)
-    response = {'departmant': department}
+    response = {'department': department}
     return jsonify(response)
+
+
+@app.route('/departments', methods=['GET'])
+def get_departments_route():
+    with driver.session() as session:
+        departments = session.execute_read(get_departments)
+    response = {'departments': departments}
+    return jsonify(response)
+
+
+@app.route('/departments/<id>/employees', methods=['GET'])
+def get_department_employees_route(id):
+    with driver.session() as session:
+        employees = session.execute_read(get_department_employees, id)
+    if not employees:
+        response = {'message': 'Department not found'}
+        return jsonify(response), 404
+    else:
+        response = {'employees': employees}
+        return jsonify(response)
 
 
 if __name__ == '__main__':
