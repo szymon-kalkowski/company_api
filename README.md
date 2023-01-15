@@ -2,6 +2,8 @@
 
 Company REST API created using Flask and Neo4j
 
+https://company-api.onrender.com/departments
+
 Endpoints:
 \
 \
